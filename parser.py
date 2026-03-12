@@ -331,15 +331,23 @@ def resolve_vendor(client_info: dict, estacion: str, variables: dict) -> tuple:
 # Build the full output dataset
 # ---------------------------------------------------------------------------
 
-def build_dataset() -> list:
-    """Parse all source files and return a list of enriched row dicts."""
+def build_dataset(dat_dir: Path = None) -> list:
+    """
+    Parse all source files and return a list of enriched row dicts.
+
+    dat_dir  – directory containing the .dat files (defaults to BASE_DIR).
+               Variables.xlsx is always loaded from BASE_DIR.
+    """
+    if dat_dir is None:
+        dat_dir = BASE_DIR
+
     variables  = load_variables(BASE_DIR / "Variables.xlsx")
-    sales      = parse_invr0601(BASE_DIR / "lp60.dat", "FACTURACION",  "VENTA")
-    returns    = parse_invr0601(BASE_DIR / "lp59.dat", "DEVOLUCION",   "NOTA DE CREDITO")
-    doc_venr15 = parse_venr15(BASE_DIR / "lp33.dat")
-    doc_facr12 = parse_facr12(BASE_DIR / "lp35.dat")
-    doc_notr03 = parse_notr03(BASE_DIR / "lp31.dat")
-    razon_map  = parse_invr29(BASE_DIR / "lp51.dat")
+    sales      = parse_invr0601(dat_dir / "lp60.dat", "FACTURACION",  "VENTA")
+    returns    = parse_invr0601(dat_dir / "lp59.dat", "DEVOLUCION",   "NOTA DE CREDITO")
+    doc_venr15 = parse_venr15(dat_dir / "lp33.dat")
+    doc_facr12 = parse_facr12(dat_dir / "lp35.dat")
+    doc_notr03 = parse_notr03(dat_dir / "lp31.dat")
+    razon_map  = parse_invr29(dat_dir / "lp51.dat")
 
     output = []
 
@@ -479,15 +487,20 @@ def write_excel(rows: list, out_path: Path) -> None:
 
 def main():
     ap = argparse.ArgumentParser(description="D'Casa Honduras ERP parser")
+    ap.add_argument("--dir", default=None,
+                    help="Directory containing the .dat files (default: script directory)")
     ap.add_argument("--out", default="Resultado.xlsx",
                     help="Output Excel file (default: Resultado.xlsx)")
     args = ap.parse_args()
 
-    print("Parsing source files…")
-    rows = build_dataset()
+    dat_dir = Path(args.dir) if args.dir else None
+
+    print("Parsing source files...")
+    rows = build_dataset(dat_dir)
     print(f"Built {len(rows):,} rows.")
 
-    write_excel(rows, BASE_DIR / args.out)
+    out_path = Path(args.out) if Path(args.out).is_absolute() else BASE_DIR / args.out
+    write_excel(rows, out_path)
 
 
 if __name__ == "__main__":
